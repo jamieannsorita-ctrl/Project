@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#5b4bff" />
+  <meta name="description" content="CLASP is a browser-based class lineup and schedule planner. Add classes, view a weekly timetable, detect conflicts, search, print, and save locally." />
+  <title>CLASP — Class Lineup And Schedule Planner</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%235B4BFF'/%3E%3Cpath d='M9 12h14M12 9v4M20 9v4M9 16h14v9H9z' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+
+  <!-- Apply the saved theme before first paint to avoid a flash. -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('clasp.theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.dataset.theme = saved || (prefersDark ? 'dark' : 'light');
+      } catch (error) {
+        document.documentElement.dataset.theme = 'light';
+      }
+    })();
+  </script>
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4.5" width="18" height="16" rx="3" />
+            <path d="M8 3v3M16 3v3M3 9.5h18" />
+            <path d="m8.5 15 2 2 4.5-4.5" />
+          </svg>
+        </span>
+        <span class="brand-text">
+          <span class="brand-name">CLASP</span>
+          <span class="brand-tag">Class Lineup &amp; Schedule Planner</span>
+        </span>
+      </div>
+
+      <nav class="main-nav" aria-label="Main views">
+        <button class="nav-btn is-active" type="button" data-view="timetable" aria-pressed="true">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <path d="M3 10h18M9 10v10M15 10v10" />
+          </svg>
+          Timetable
+        </button>
+        <button class="nav-btn" type="button" data-view="classes" aria-pressed="false">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" />
+          </svg>
+          My Classes
+          <span class="nav-badge" id="navCount">0</span>
+        </button>
+      </nav>
+
+      <div class="header-actions">
+        <span class="save-status" id="saveStatus" data-state="saved" title="Saved in this browser">
+          <span class="save-dot" aria-hidden="true"></span>
+          <span id="saveStatusText">Auto-save on</span>
+        </span>
+        <button class="icon-btn" type="button" id="themeToggle" aria-label="Switch to dark theme" title="Toggle light / dark theme">
+          <svg class="icon icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+          </svg>
+          <svg class="icon icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" />
+          </svg>
+        </button>
+        <button class="btn btn-ghost" type="button" id="printBtn" title="Print your schedule">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2" />
+            <rect x="6" y="14" width="12" height="8" rx="2" />
+          </svg>
+          <span class="btn-label">Print</span>
+        </button>
+        <button class="btn btn-primary" type="button" data-action="add" aria-label="Add a class">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          <span class="btn-label">Add class</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="main">
+      <div class="print-only print-heading">
+        <div>
+          <p class="print-eyebrow">CLASP · Class Lineup And Schedule Planner</p>
+          <h1 id="printTitle">My Weekly Class Schedule</h1>
+          <p class="print-scope" id="printScope"></p>
+        </div>
+        <p class="print-date" id="printDate"></p>
+      </div>
+
+      <!-- ===================== TIMETABLE VIEW ===================== -->
+      <section class="view" id="view-timetable" aria-labelledby="timetableTitle">
+        <div class="view-head">
+          <div>
+            <h1 id="timetableTitle">Weekly timetable</h1>
+            <p class="view-sub">Your whole week at a glance. Click any class block to edit it.</p>
+          </div>
+          <p class="week-label" id="weekLabel"></p>
+        </div>
+
+        <div class="stats-grid">
+          <article class="stat-card">
+            <div class="stat-top">
+              <span class="stat-label">Classes</span>
+              <span class="stat-icon" data-tone="indigo" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 13 9 5 9-5" />
+                </svg>
+              </span>
+            </div>
+            <p class="stat-value" id="statClasses">0</p>
+            <p class="stat-hint">Across 6 school days</p>
+          </article>
+
+          <article class="stat-card">
+            <div class="stat-top">
+              <span class="stat-label">Weekly hours</span>
+              <span class="stat-icon" data-tone="sky" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
+                </svg>
+              </span>
+            </div>
+            <p class="stat-value" id="statHours">0h</p>
+            <p class="stat-hint">Total class time</p>
+          </article>
+
+          <article class="stat-card">
+            <div class="stat-top">
+              <span class="stat-label">Busiest day</span>
+              <span class="stat-icon" data-tone="teal" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4.5" width="18" height="16" rx="3" /><path d="M8 3v3M16 3v3M3 9.5h18" />
+                </svg>
+              </span>
+            </div>
+            <p class="stat-value" id="statBusiest">—</p>
+            <p class="stat-hint" id="statBusiestHint">No classes yet</p>
+          </article>
+
+          <article class="stat-card">
+            <div class="stat-top">
+              <span class="stat-label">Conflicts</span>
+              <span class="stat-icon" data-tone="amber" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10.3 3.8 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0Z" />
+                  <path d="M12 9v4M12 17h.01" />
+                </svg>
+              </span>
+            </div>
+            <p class="stat-value" id="statConflicts">0</p>
+            <p class="stat-hint" id="statConflictsHint">All clear</p>
+          </article>
+        </div>
+
+        <div class="card timetable-card">
+          <div class="card-head">
+            <div>
+              <h2>Schedule</h2>
+              <p class="card-sub" id="ttSummary">No classes yet</p>
+            </div>
+            <span class="conflict-chip" id="conflictChip" data-state="ok">
+              <span class="chip-dot" aria-hidden="true"></span>
+              <span id="conflictChipText">No conflicts</span>
+            </span>
+          </div>
+
+          <div class="timetable-wrap">
+            <div class="timetable-scroll" id="timetableScroll">
+              <div class="tt" id="timetable" role="group" aria-label="Weekly class timetable"></div>
+            </div>
+
+            <div class="empty-state" id="ttEmpty" hidden>
+              <div class="empty-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4.5" width="18" height="16" rx="3" /><path d="M8 3v3M16 3v3M3 9.5h18" />
+                  <path d="M9 14h6M9 17h4" />
+                </svg>
+              </div>
+              <h2>Your week is wide open</h2>
+              <p>Add your first class and it will appear on the timetable right away.</p>
+              <div class="empty-actions">
+                <button class="btn btn-primary" type="button" data-action="add">+ Add your first class</button>
+                <button class="btn btn-ghost" type="button" data-action="load-sample">Load sample schedule</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- ===================== CLASS LIST VIEW ===================== -->
+      <section class="view" id="view-classes" aria-labelledby="classesTitle" hidden>
+        <div class="view-head">
+          <div>
+            <h1 id="classesTitle">My classes</h1>
+            <p class="view-sub">Search, filter, edit, or remove classes from your weekly lineup.</p>
+          </div>
+          <button class="btn btn-primary" type="button" data-action="add">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            <span class="btn-label">Add class</span>
+          </button>
+        </div>
+
+        <div class="list-toolbar">
+          <div class="search-field">
+            <svg class="icon search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" /><path d="m20 20-3.4-3.4" />
+            </svg>
+            <input type="search" id="searchInput" placeholder="Search subject, room, or instructor…" autocomplete="off" aria-label="Search classes" />
+          </div>
+
+          <div class="day-chips" id="dayChips" role="group" aria-label="Filter classes by day">
+            <button class="chip is-active" type="button" data-day="all" aria-pressed="true">All</button>
+            <button class="chip" type="button" data-day="Monday" aria-pressed="false">Mon</button>
+            <button class="chip" type="button" data-day="Tuesday" aria-pressed="false">Tue</button>
+            <button class="chip" type="button" data-day="Wednesday" aria-pressed="false">Wed</button>
+            <button class="chip" type="button" data-day="Thursday" aria-pressed="false">Thu</button>
+            <button class="chip" type="button" data-day="Friday" aria-pressed="false">Fri</button>
+            <button class="chip" type="button" data-day="Saturday" aria-pressed="false">Sat</button>
+          </div>
+
+          <p class="result-count" id="resultCount" aria-live="polite">0 classes</p>
+        </div>
+
+        <div class="class-grid" id="classList"></div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p><strong>CLASP</strong> · ITP10 Event-Driven Programming · Universidad de Dagupan</p>
+      <p>Your schedule is saved in this browser only — no account or server needed.</p>
+    </footer>
+  </div>
+  <!-- ===================== ADD / EDIT CLASS DIALOG ===================== -->
+  <dialog class="modal" id="classDialog" aria-labelledby="dialogTitle">
+    <form id="classForm" novalidate>
+      <header class="modal-head">
+        <div>
+          <h2 id="dialogTitle">Add class</h2>
+          <p id="dialogSubtitle">Fill in the details for your weekly class.</p>
+        </div>
+        <button class="icon-btn modal-close" type="button" data-close aria-label="Close dialog">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </button>
+      </header>
+
+      <div class="modal-body">
+        <div class="field field-full">
+          <label for="subject">Subject <span class="req" aria-hidden="true">*</span></label>
+          <input id="subject" name="subject" type="text" maxlength="60" placeholder="e.g. Data Structures" autocomplete="off" required aria-describedby="err-subject" />
+          <p class="field-error" id="err-subject"></p>
+        </div>
+
+        <div class="field">
+          <label for="day">Day <span class="req" aria-hidden="true">*</span></label>
+          <select id="day" name="day" required aria-describedby="err-day">
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+            <option value="Saturday">Saturday</option>
+          </select>
+          <p class="field-error" id="err-day"></p>
+        </div>
+
+        <div class="field">
+          <label for="room">Room <span class="opt">optional</span></label>
+          <input id="room" name="room" type="text" maxlength="30" placeholder="e.g. Lab 204" autocomplete="off" aria-describedby="err-room" />
+          <p class="field-error" id="err-room"></p>
+        </div>
+
+        <div class="field">
+          <label for="start">Start time <span class="req" aria-hidden="true">*</span></label>
+          <input id="start" name="start" type="time" step="300" required aria-describedby="err-start" />
+          <p class="field-error" id="err-start"></p>
+        </div>
+
+        <div class="field">
+          <label for="end">End time <span class="req" aria-hidden="true">*</span></label>
+          <input id="end" name="end" type="time" step="300" required aria-describedby="err-end" />
+          <p class="field-error" id="err-end"></p>
+        </div>
+
+        <div class="field field-full">
+          <label for="instructor">Instructor <span class="opt">optional</span></label>
+          <input id="instructor" name="instructor" type="text" maxlength="50" placeholder="e.g. Ms. Cruz" autocomplete="off" />
+        </div>
+
+        <div class="field field-full">
+          <span class="field-label">Class color</span>
+          <div class="color-picker" id="colorPicker" role="radiogroup" aria-label="Class color"></div>
+        </div>
+
+        <div class="conflict-warning" id="conflictWarning" role="alert" hidden>
+          <div class="cw-head">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M10.3 3.8 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0Z" />
+              <path d="M12 9v4M12 17h.01" />
+            </svg>
+            <strong>Time conflict detected</strong>
+          </div>
+          <p>This class overlaps with:</p>
+          <ul id="conflictList"></ul>
+          <p class="conflict-note">You can still save it, but the clash will be marked on your timetable. Click <b>Save anyway</b> to continue.</p>
+        </div>
+      </div>
+
+      <footer class="modal-foot">
+        <button class="btn btn-danger-ghost" type="button" id="deleteBtn" hidden>Delete class</button>
+        <div class="modal-foot-right">
+          <button class="btn btn-ghost" type="button" data-close>Cancel</button>
+          <button class="btn btn-primary" type="submit" id="saveBtn">Save class</button>
+        </div>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- ===================== DELETE CONFIRMATION ===================== -->
+  <dialog class="modal modal-sm" id="confirmDialog" aria-labelledby="confirmTitle">
+    <header class="modal-head">
+      <div>
+        <h2 id="confirmTitle">Delete class?</h2>
+        <p>This action cannot be undone.</p>
+      </div>
+    </header>
+    <div class="modal-body">
+      <p class="confirm-message" id="confirmMessage"></p>
+    </div>
+    <footer class="modal-foot">
+      <div class="modal-foot-right">
+        <button class="btn btn-ghost" type="button" data-close>Cancel</button>
+        <button class="btn btn-danger" type="button" id="confirmDeleteBtn">Delete</button>
+      </div>
+    </footer>
+  </dialog>
+
+  <!-- ===================== EMPTY TIMETABLE NOTICE ===================== -->
+  <dialog class="modal modal-sm" id="noticeDialog" aria-labelledby="noticeTitle">
+    <header class="modal-head">
+      <div>
+        <h2 id="noticeTitle">Timetable is empty</h2>
+        <p id="noticeSubtitle">There's nothing to print yet.</p>
+      </div>
+    </header>
+    <div class="modal-body">
+      <p class="confirm-message" id="noticeMessage">Add at least one class to your timetable before printing it.</p>
+    </div>
+    <footer class="modal-foot">
+      <div class="modal-foot-right">
+        <button class="btn btn-primary" type="button" data-close>Got it</button>
+      </div>
+    </footer>
+  </dialog>
+
+  <!-- ===================== CLASS REMINDER POP-UP ===================== -->
+  <dialog class="modal modal-sm reminder-dialog" id="reminderDialog" aria-labelledby="reminderTitle">
+    <header class="modal-head">
+      <span class="reminder-bell" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+        </svg>
+      </span>
+      <div class="reminder-head-text">
+        <h2 id="reminderTitle">Class starting soon</h2>
+        <p class="reminder-countdown" id="reminderCountdown" data-state="soon" aria-live="polite">Starts soon</p>
+      </div>
+      <button class="icon-btn modal-close" type="button" data-close aria-label="Dismiss reminder">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M6 6l12 12M18 6 6 18" />
+        </svg>
+      </button>
+    </header>
+
+    <div class="modal-body">
+      <div class="reminder-details" id="reminderDetails">
+        <p class="reminder-subject">
+          <span class="reminder-dot" aria-hidden="true"></span>
+          <strong id="reminderSubject"></strong>
+        </p>
+        <ul class="cc-meta reminder-meta">
+          <li><span class="meta-label">When</span><span class="meta-value" id="reminderWhen"></span></li>
+          <li><span class="meta-label">Room</span><span class="meta-value" id="reminderRoom"></span></li>
+          <li><span class="meta-label">Teacher</span><span class="meta-value" id="reminderInstructor"></span></li>
+        </ul>
+      </div>
+      <p class="reminder-hint" id="reminderHint"></p>
+    </div>
+
+    <footer class="modal-foot">
+      <button class="btn btn-ghost" type="button" id="reminderSnoozeBtn">Snooze 5 min</button>
+      <div class="modal-foot-right">
+        <button class="btn btn-primary" type="button" id="reminderDismissBtn">Got it, thanks</button>
+      </div>
+    </footer>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
